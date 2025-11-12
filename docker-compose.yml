@@ -1,0 +1,122 @@
+services:
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: zabbix
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - labnet
+
+  zabbix-server:
+    image: zabbix/zabbix-server-pgsql:alpine-7.4-latest
+    depends_on:
+      - postgres
+    environment:
+      DB_SERVER_HOST: postgres
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      ZBX_STARTAGENTS: '0'
+    volumes:
+      - zbx_alertscripts:/usr/lib/zabbix/alertscripts
+      - zbx_modules:/usr/lib/zabbix/modules
+    networks:
+      - labnet
+
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-pgsql:alpine-7.4-latest
+    depends_on:
+      - zabbix-server
+    environment:
+      DB_SERVER_HOST: postgres
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      ZBX_SERVER_HOST: zabbix-server
+      PHP_TZ: Europe/Algiers
+    ports:
+      - "8080:8080"
+    networks:
+      - labnet
+
+  influxdb:
+    image: influxdb:2.7.12
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUX_INIT_USERNAME}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUX_INIT_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUX_INIT_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUX_INIT_BUCKET}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN}
+    volumes:
+      - influx_data:/var/lib/influxdb2
+    ports:
+      - "8086:8086"
+    networks:
+      - labnet
+
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_INSTALL_PLUGINS: alexanderzobnin-zabbix-app,grafana-piechart-panel,grafana-clock-panel
+    ports:
+      - "3000:3000"
+
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - influxdb
+      - zabbix-server
+    networks:
+      - labnet
+
+
+  zabbix-to-influx:
+    build: ./zabbix_to_influx
+    restart: unless-stopped
+    depends_on:
+      - zabbix-web
+      - influxdb
+    environment:
+      ZABBIX_URL: http://zabbix-web:8080/api_jsonrpc.php
+      ZABBIX_TOKEN: ${ZABBIX_API_TOKEN}
+      INFLUX_URL: ${INFLUX_URL}
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+      INFLUX_ORG: ${INFLUX_INIT_ORG}
+      INFLUX_BUCKET: ${INFLUX_INIT_BUCKET}
+      POLL_INTERVAL: ${ZABBIX_POLL_INTERVAL}
+    networks:
+      - labnet
+
+  ml-analyzer:
+    build: ./ml_analyzer
+    depends_on:
+      - influxdb
+      - zabbix-to-influx
+    environment:
+      INFLUX_URL: ${INFLUX_URL}
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+      INFLUX_BUCKET: ${INFLUX_INIT_BUCKET}
+      ML_WINDOW_MINUTES: ${ML_WINDOW_MINUTES}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL}
+    networks:
+      - labnet
+
+networks:
+  labnet:
+    driver: bridge
+
+volumes:
+  pg_data:
+  influx_data:
+  grafana_data:
+  zbx_alertscripts:
+  zbx_modules:

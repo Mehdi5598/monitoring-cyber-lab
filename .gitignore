@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info
+*.log
+*.joblib
+.env
+data/
+ml_analyzer/__pycache__/
+ml_analyzer/data/
+
+# Docker
+volumes/
+influx_data/
+pg_data/
+grafana_data/
+logs/
+*.pid
+*.tar
+*.bak
+*.old
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# System
+.DS_Store
+Thumbs.db
+
+.env

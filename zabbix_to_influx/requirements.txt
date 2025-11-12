@@ -1,0 +1,4 @@
+requests
+influxdb-client
+pandas
+python-dateutil

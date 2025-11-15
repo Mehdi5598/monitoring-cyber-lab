@@ -95,8 +95,13 @@ services:
     networks:
       - labnet
 
-  ml-analyzer:
-    build: ./ml_analyzer
+  ml-pipeline:
+    build: ./ml_pipeline
+    container_name: m_security_pipeline
+    restart: unless-stopped
+    volumes:
+      - ./ml_pipeline/config:/app/config:ro
+      - ml_models:/app/models/saved
     depends_on:
       - influxdb
       - zabbix-to-influx
@@ -104,10 +109,16 @@ services:
       INFLUX_URL: ${INFLUX_URL}
       INFLUX_TOKEN: ${INFLUX_TOKEN}
       INFLUX_BUCKET: ${INFLUX_INIT_BUCKET}
-      ML_WINDOW_MINUTES: ${ML_WINDOW_MINUTES}
+      INFLUX_INIT_ORG: ${INFLUX_INIT_ORG}
+     #ML_WINDOW_MINUTES: ${ML_WINDOW_MINUTES}
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL}
     networks:
       - labnet
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://influxdb:8086/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 networks:
   labnet:
@@ -119,3 +130,4 @@ volumes:
   grafana_data:
   zbx_alertscripts:
   zbx_modules:
+  ml_models:

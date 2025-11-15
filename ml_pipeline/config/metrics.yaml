@@ -1,0 +1,38 @@
+# ml_pipeline/config/metrics.yaml
+metrics:
+  # Performance metric: CPU utilization
+  - name: "system.cpu.util"
+    type: "performance"
+    model: "isolation_forest"
+    window_minutes: 15
+    schedule: "every_30s"
+    contamination: 0.01  # Expected % of anomalies
+    
+  # Security metric: Failed login attempts
+  - name: "eventlog.failed_logins"
+    type: "security"
+    model: "zscore_burst"
+    window_minutes: 5
+    schedule: "every_30s"
+    zscore_threshold: 3.0
+    
+  # Disk usage (seasonal pattern)
+  - name: "vfs.fs.size[/,pused]"
+    type: "performance"
+    model: "isolation_forest"
+    window_minutes: 30
+    schedule: "every_2m"
+    contamination: 0.005
+
+models:
+  isolation_forest:
+    n_estimators: 100
+    random_state: 42
+    persist_model: true
+    retrain_after: 500  # Retrain after 500 samples
+
+alerting:
+  write_to_influx: true
+  influx_bucket: "metrics"
+  webhook_enabled: false  
+  suppression_window_minutes: 5

@@ -1,5 +1,0 @@
-influxdb-client
-pandas
-scikit-learn
-requests
-python-dateutil

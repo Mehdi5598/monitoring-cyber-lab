@@ -114,11 +114,11 @@ services:
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL}
     networks:
       - labnet
-    healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://influxdb:8086/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+#    healthcheck:
+#     test: ["CMD", "python", "-c", "import requests; requests.get('http://influxdb:8086/health')"]
+#     interval: 30s
+#     timeout: 10s
+#      retries: 3
 
 networks:
   labnet:

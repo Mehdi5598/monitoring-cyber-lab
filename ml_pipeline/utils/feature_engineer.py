@@ -32,15 +32,38 @@ class FeatureEngineer:
         # 4. Exponential moving average
         features['ewm'] = features['value'].ewm(span=window).mean()
         
-        # 5. Fill NaN values
+        # 5. Clean infinite and extreme values BEFORE scaling
+        features = features.replace([np.inf, -np.inf], np.nan)
+        
+        # Cap extreme values at 5 standard deviations
+        for col in ['value', 'value_diff', 'value_pct_change']:
+            if col in features.columns:
+                mean_val = features[col].mean()
+                std_val = features[col].std()
+                if pd.notna(mean_val) and pd.notna(std_val) and std_val > 0:
+                    upper_bound = mean_val + 5 * std_val
+                    lower_bound = mean_val - 5 * std_val
+                    features[col] = features[col].clip(lower=lower_bound, upper=upper_bound)
+        
+        # 6. Fill NaN values
         features = features.fillna(method='ffill').fillna(method='bfill').fillna(0)
         
-        # 6. Scale numeric features (per metric)
+        # 7. Scale numeric features (per metric)
         numeric_cols = features.select_dtypes(include=[np.number]).columns
         if metric_name not in self.scalers:
             self.scalers[metric_name] = StandardScaler()
         
+        # Check for any remaining infinite values
+        if np.isinf(features[numeric_cols]).any().any():
+            print(f"[WARN] Infinite values detected in {metric_name}, replacing with 0")
+            features[numeric_cols] = features[numeric_cols].replace([np.inf, -np.inf], 0)
+        
         # Fit-transform on current data
-        features[numeric_cols] = self.scalers[metric_name].fit_transform(features[numeric_cols])
+        try:
+            features[numeric_cols] = self.scalers[metric_name].fit_transform(features[numeric_cols])
+        except Exception as e:
+            print(f"[ERROR] Scaling failed for {metric_name}: {e}")
+            # Fallback: just normalize to 0-1 range
+            features[numeric_cols] = (features[numeric_cols] - features[numeric_cols].min()) / (features[numeric_cols].max() - features[numeric_cols].min() + 1e-8)
         
         return features

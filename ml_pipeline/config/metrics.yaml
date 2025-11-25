@@ -1,38 +1,76 @@
 # ml_pipeline/config/metrics.yaml
+# WORKING CONFIGURATION - GUID-based network keys
+
 metrics:
-  # Performance metric: CPU utilization
+  # CPU & Performance Metrics
   - name: "system.cpu.util"
     type: "performance"
     model: "isolation_forest"
     window_minutes: 15
     schedule: "every_30s"
-    contamination: 0.01  # Expected % of anomalies
-    
-  # Security metric: Failed login attempts
-  - name: "eventlog.failed_logins"
+    contamination: 0.05
+
+  - name: "system.cpu.load[all,avg1]"
+    type: "performance"
+    model: "isolation_forest"
+    window_minutes: 10
+    schedule: "every_30s"
+    contamination: 0.03
+
+  - name: "vm.memory.utilization"
+    type: "performance"
+    model: "isolation_forest"
+    window_minutes: 15
+    schedule: "every_2m"
+    contamination: 0.04
+
+  # Process Security
+  - name: "proc.num[,,run]"
     type: "security"
     model: "zscore_burst"
     window_minutes: 5
     schedule: "every_30s"
-    zscore_threshold: 3.0
-    
-  # Disk usage (seasonal pattern)
-  - name: "vfs.fs.size[/,pused]"
-    type: "performance"
-    model: "isolation_forest"
-    window_minutes: 30
-    schedule: "every_2m"
-    contamination: 0.005
+    zscore_threshold: 2.5
+
+  # Network Security - Ethernet 2 (Attack Target)
+  - name: 'net.if.in["{FBAEB9B8-4FE4-4D1C-857B-C95F99AF9B2D}",errors]'
+    type: "security"
+    model: "zscore_burst"
+    window_minutes: 5
+    schedule: "every_30s"
+    zscore_threshold: 2.0
+
+  - name: 'net.if.in["{FBAEB9B8-4FE4-4D1C-857B-C95F99AF9B2D}",dropped]'
+    type: "security"
+    model: "zscore_burst"
+    window_minutes: 5
+    schedule: "every_30s"
+    zscore_threshold: 2.0
+
+  # Network Security - Ethernet (Management)
+  - name: 'net.if.in["{370B429D-59A9-4E1D-BEAD-A0F90055E691}",errors]'
+    type: "security"
+    model: "zscore_burst"
+    window_minutes: 5
+    schedule: "every_30s"
+    zscore_threshold: 2.0
+
+  - name: 'net.if.in["{370B429D-59A9-4E1D-BEAD-A0F90055E691}",dropped]'
+    type: "security"
+    model: "zscore_burst"
+    window_minutes: 5
+    schedule: "every_30s"
+    zscore_threshold: 2.0
 
 models:
   isolation_forest:
     n_estimators: 100
     random_state: 42
     persist_model: true
-    retrain_after: 500  # Retrain after 500 samples
+    retrain_after: 1000
 
 alerting:
   write_to_influx: true
   influx_bucket: "metrics"
-  webhook_enabled: false  
+  webhook_enabled: false
   suppression_window_minutes: 5

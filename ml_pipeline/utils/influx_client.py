@@ -15,19 +15,25 @@ class InfluxClient:
         self.query_api = self.client.query_api()
         self.write_api = self.client.write_api()
     
+    def escape_key_for_flux(self, key: str) -> str:
+        """
+        Escape special characters in Zabbix keys for Flux queries.
+        Critical: Changes [" to [\" and "] to \"]
+        """
+        # This is the exact pattern that works in your manual query
+        if key.startswith('net.if.') and '["{' in key and '}"' in key:
+            return key.replace('["', '[\\"').replace('",', '\\",').replace('"]', '\\"]')
+        return key
+    
     def get_metric_window(self, metric_name: str, window_minutes: int) -> pd.DataFrame:
         """Get last N minutes of data for a metric using 'key' tag"""
         start_time = datetime.utcnow() - pd.Timedelta(minutes=window_minutes)
         
-        # Use .format() instead of f-string to avoid syntax issues
-        flux_query = '''
-        from(bucket: "{}")
-          |> range(start: {}Z)
-          |> filter(fn: (r) => r._measurement == "zabbix_metric")
-          |> filter(fn: (r) => r._field == "value")
-          |> filter(fn: (r) => r.key == "{}")
-          |> sort(columns: ["_time"])
-        '''.format(self.bucket, start_time.isoformat(), metric_name)
+        # Apply Flux-specific escaping
+        escaped_metric = self.escape_key_for_flux(metric_name)
+        
+        flux_query = 'from(bucket: "{}") |> range(start: {}Z) |> filter(fn: (r) => r._measurement == "zabbix_metric") |> filter(fn: (r) => r._field == "value") |> filter(fn: (r) => r.key == "{}") |> sort(columns: ["_time"])'.format(
+            self.bucket, start_time.isoformat(), escaped_metric)
         
         try:
             tables = self.query_api.query(flux_query, org=self.org)
@@ -50,6 +56,7 @@ class InfluxClient:
             
         except Exception as e:
             print(f"[INFLUX ERROR] {metric_name}: {str(e)}")
+            print(f"[INFLUX ERROR] Query preview: {flux_query[:150]}...")
             return None
     
     def write_anomaly(self, metric_name: str, timestamp, anomaly_score: float, features: dict):

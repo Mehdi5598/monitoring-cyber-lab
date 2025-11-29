@@ -33,29 +33,29 @@ metrics:
     zscore_threshold: 2.5
 
   # Network Security - Ethernet 2 (Attack Target)
-  - name: 'net.if.in["{FBAEB9B8-4FE4-4D1C-857B-C95F99AF9B2D}",errors]'
+  - name: 'net.if.in["{FBAEB9B8-4FE4-4D1C-857B-C95F99AF9B2D}"]'
     type: "security"
     model: "zscore_burst"
     window_minutes: 5
     schedule: "every_30s"
-    zscore_threshold: 2.0
+    zscore_threshold: 1.5
 
-  - name: 'net.if.in["{FBAEB9B8-4FE4-4D1C-857B-C95F99AF9B2D}",dropped]'
+  - name: 'net.if.out["{FBAEB9B8-4FE4-4D1C-857B-C95F99AF9B2D}"]'
     type: "security"
     model: "zscore_burst"
     window_minutes: 5
     schedule: "every_30s"
-    zscore_threshold: 2.0
+    zscore_threshold: 1.5
 
   # Network Security - Ethernet (Management)
-  - name: 'net.if.in["{370B429D-59A9-4E1D-BEAD-A0F90055E691}",errors]'
+  - name: 'net.if.in["{370B429D-59A9-4E1D-BEAD-A0F90055E691}"]'
     type: "security"
     model: "zscore_burst"
     window_minutes: 5
     schedule: "every_30s"
     zscore_threshold: 2.0
 
-  - name: 'net.if.in["{370B429D-59A9-4E1D-BEAD-A0F90055E691}",dropped]'
+  - name: 'net.if.out["{370B429D-59A9-4E1D-BEAD-A0F90055E691}"]'
     type: "security"
     model: "zscore_burst"
     window_minutes: 5

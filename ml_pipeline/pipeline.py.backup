@@ -16,19 +16,10 @@ from strategies.detector import DetectorOrchestrator
 
 class MLPipeline:
     def __init__(self):
-        print("🔍 DEBUG: Initializing InfluxClient...")
         self.influx = InfluxClient()
-        print("✅ InfluxClient initialized")
-        
-        print("🔍 DEBUG: Initializing FeatureEngineer...")
         self.engineer = FeatureEngineer()
-        print("✅ FeatureEngineer initialized")
-        
-        print("🔍 DEBUG: Initializing DetectorOrchestrator...")
         self.orchestrator = DetectorOrchestrator()
-        print("✅ DetectorOrchestrator initialized")
-        
-        self.last_alert = {}
+        self.last_alert = {}  # Suppression tracking
         
         # Load scheduling config
         self.schedule_map = {
@@ -46,7 +37,7 @@ class MLPipeline:
         # 1. Query data
         df = self.influx.get_metric_window(metric_name, metric_config['window_minutes'])
         if df is None or len(df) < 5:
-            print(f"  [SKIP] Insufficient data: {len(df) if df is not None else 0} points")
+            print(f"  [SKIP] Insufficient data: {len(df) if df else 0} points")
             return
         
         # 2. Engineer features
@@ -69,43 +60,21 @@ class MLPipeline:
     def _handle_anomaly(self, metric_name: str, timestamp, row: pd.Series, config: dict):
         """Write anomaly and check suppression"""
         
-        # FIX: Create suppression key with seconds precision
-        ts_key = timestamp.floor('30s').strftime('%Y-%m-%d %H:%M:%S')
-        suppression_key = f"{metric_name}_{ts_key}"
-        
-        # Check suppression window (5 minutes)
-        now = datetime.utcnow()
+        # Suppression logic
+        suppression_key = f"{metric_name}_{timestamp.floor('5min')}"
         if suppression_key in self.last_alert:
-            time_diff = now - self.last_alert[suppression_key]
-            if time_diff < timedelta(minutes=5):
-                print(f"  [SUPPRESS] {metric_name} - last alert {time_diff.seconds}s ago")
+            if datetime.utcnow() - self.last_alert[suppression_key] < timedelta(minutes=5):
                 return
         
-        self.last_alert[suppression_key] = now
+        self.last_alert[suppression_key] = datetime.utcnow()
         
-        # FIX: Better anomaly score calculation
-        anomaly_score = 0.0
-        
-        # Check features in priority order
-        pct_change = row.get('value_pct_change')
-        if pd.notna(pct_change) and abs(pct_change) > 0.001:
-            anomaly_score = abs(pct_change) * 2.0
-        
-        if anomaly_score == 0.0:
-            value_diff = row.get('value_diff')
-            if pd.notna(value_diff) and abs(value_diff) > 0.001:
-                anomaly_score = abs(value_diff) * 1.5
-        
-        if anomaly_score == 0.0:
-            anomaly_score = 1.0
-        
+        # Write to InfluxDB
+        anomaly_score = abs(row.get('value_pct_change', 1.0))
         self.influx.write_anomaly(metric_name, timestamp, anomaly_score, row.to_dict())
-        print(f"[ANOMALY] {metric_name} at {timestamp} (score: {anomaly_score:.3f})")
     
     def start(self):
         """Schedule all metrics"""
         print("🚀 ML Pipeline Starting...")
-        print(f"📊 Found {len(self.orchestrator.config.get('metrics', []))} metrics to monitor")
         
         for metric in self.orchestrator.config['metrics']:
             schedule_type = metric['schedule']
@@ -115,7 +84,6 @@ class MLPipeline:
             print(f"  Scheduled {metric['name']} every {interval}s")
         
         print("\n✅ Pipeline running. Press Ctrl+C to stop.\n")
-        sys.stdout.flush()
         
         while True:
             schedule.run_pending()

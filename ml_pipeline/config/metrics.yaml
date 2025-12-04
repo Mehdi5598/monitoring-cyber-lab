@@ -63,12 +63,12 @@ metrics:
     zscore_threshold: 2.0
 
     # Port Scan Detection - SYN Received (spikes during SYN flood/port scans)
-  - name: "tcp.connections.synreceived"
-    type: "security"
-    model: "zscore_burst"
-    window_minutes: 2
-    schedule: "every_30s"
-    zscore_threshold: 2.0
+    # name: "tcp.connections.synreceived"
+    # type: "security"
+    # model: "zscore_burst"
+    # window_minutes: 2
+    # schedule: "every_30s"
+    # zscore_threshold: 2.0
 
   # Total TCP Connections (detect connection exhaustion)
   - name: "tcp.connections.total"
@@ -76,7 +76,7 @@ metrics:
     model: "zscore_burst"
     window_minutes: 5
     schedule: "every_30s"
-    zscore_threshold: 2.5
+    zscore_threshold: 2.0
 
   # SMB Port 445 monitoring (direct attack target)
   - name: "tcp.connections.port445"

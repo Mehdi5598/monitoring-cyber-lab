@@ -85,6 +85,42 @@ metrics:
     window_minutes: 2
     schedule: "every_30s"
     zscore_threshold: 1.5
+      
+  # Windows Security Log Monitoring
+  - name: "security.log.failures"
+    type: "security"
+    model: "zscore_burst"
+    window_minutes: 5
+    schedule: "every_30s"
+    zscore_threshold: 2.0
+
+  - name: "security.log.successes"
+    type: "performance"
+    model: "zscore_burst"
+    window_minutes: 5
+    schedule: "every_30s"
+    zscore_threshold: 2.5
+
+  - name: "security.log.privilege"
+    type: "security"
+    model: "zscore_burst"
+    window_minutes: 5
+    schedule: "every_30s"
+    zscore_threshold: 2.0
+
+  - name: "system.log.errors"
+    type: "security"
+    model: "zscore_burst"
+    window_minutes: 5
+    schedule: "every_30s"
+    zscore_threshold: 2.5
+
+  - name: "app.log.crashes"
+    type: "security"
+    model: "zscore_burst"
+    window_minutes: 5
+    schedule: "every_30s"
+    zscore_threshold: 3.0
 
 models:
   isolation_forest:

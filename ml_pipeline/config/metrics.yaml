@@ -1,14 +1,15 @@
-# ml_pipeline/config/metrics.yaml
-# WORKING CONFIGURATION - GUID-based network keys
-
 metrics:
-  # CPU & Performance Metrics
+  # === PERFORMANCE METRICS (Isolation Forest) ===
+  # Detect sustained behavioral anomalies
+  
   - name: "system.cpu.util"
     type: "performance"
     model: "isolation_forest"
     window_minutes: 15
     schedule: "every_30s"
     contamination: 0.05
+    enabled: true
+    description: "CPU utilization - detects sustained CPU exhaustion attacks"
 
   - name: "system.cpu.load[all,avg1]"
     type: "performance"
@@ -16,29 +17,41 @@ metrics:
     window_minutes: 10
     schedule: "every_30s"
     contamination: 0.03
+    enabled: true
+    description: "1-minute load average - detects CPU spikes"
 
   - name: "vm.memory.utilization"
     type: "performance"
     model: "isolation_forest"
     window_minutes: 15
-    schedule: "every_2m"
+    schedule: "every_1m"
     contamination: 0.04
+    enabled: true
+    description: "Memory usage - detects memory exhaustion attacks"
 
-  # Process Security
+  # === PROCESS MONITORING ===
+  
   - name: "proc.num[,,run]"
     type: "security"
     model: "zscore_burst"
     window_minutes: 5
     schedule: "every_30s"
     zscore_threshold: 2.5
+    enabled: true
+    description: "Running processes - detects process spike attacks"
+    burst_threshold: 50
 
-  # Network Security - Ethernet 2 (Attack Target)
+  # === NETWORK SECURITY - Ethernet 2 (Attack Target) ===
+  
   - name: 'net.if.in["{FBAEB9B8-4FE4-4D1C-857B-C95F99AF9B2D}"]'
     type: "security"
     model: "zscore_burst"
     window_minutes: 5
     schedule: "every_30s"
     zscore_threshold: 1.5
+    enabled: true
+    description: "Inbound traffic on Ethernet2 (primary attack target)"
+    burst_multiplier: 3.0
 
   - name: 'net.if.out["{FBAEB9B8-4FE4-4D1C-857B-C95F99AF9B2D}"]'
     type: "security"
@@ -46,14 +59,20 @@ metrics:
     window_minutes: 5
     schedule: "every_30s"
     zscore_threshold: 1.5
+    enabled: true
+    description: "Outbound traffic on Ethernet2 (DDoS response)"
 
-  # Network Security - Ethernet (Management)
+  # === NETWORK SECURITY - Ethernet (Management) ===
+  
   - name: 'net.if.in["{370B429D-59A9-4E1D-BEAD-A0F90055E691}"]'
     type: "security"
     model: "zscore_burst"
     window_minutes: 5
     schedule: "every_30s"
     zscore_threshold: 2.0
+    enabled: true
+    description: "Inbound management traffic"
+    burst_multiplier: 2.0
 
   - name: 'net.if.out["{370B429D-59A9-4E1D-BEAD-A0F90055E691}"]'
     type: "security"
@@ -61,45 +80,42 @@ metrics:
     window_minutes: 5
     schedule: "every_30s"
     zscore_threshold: 2.0
+    enabled: true
+    description: "Outbound management traffic"
 
-    # Port Scan Detection - SYN Received (spikes during SYN flood/port scans)
-    # name: "tcp.connections.synreceived"
-    # type: "security"
-    # model: "zscore_burst"
-    # window_minutes: 2
-    # schedule: "every_30s"
-    # zscore_threshold: 2.0
-
-  # Total TCP Connections (detect connection exhaustion)
+  # === TCP CONNECTION MONITORING ===
+  
   - name: "tcp.connections.total"
     type: "security"
     model: "zscore_burst"
     window_minutes: 5
     schedule: "every_30s"
     zscore_threshold: 2.0
+    enabled: true
+    description: "Total TCP connections - SYN flood detector"
+    burst_threshold: 200
 
-  # SMB Port 445 monitoring (direct attack target)
   - name: "tcp.connections.port445"
     type: "security"
     model: "zscore_burst"
     window_minutes: 2
     schedule: "every_30s"
     zscore_threshold: 1.5
-      
-  # Windows Security Log Monitoring
+    enabled: true
+    description: "Port 445 (SMB) - brute force / ransomware indicator"
+    burst_threshold: 150
+
+  # === SECURITY EVENT LOGS ===
+  
   - name: "security.log.failures"
     type: "security"
     model: "zscore_burst"
     window_minutes: 5
     schedule: "every_30s"
-    zscore_threshold: 2.0
-
-  - name: "security.log.successes"
-    type: "performance"
-    model: "zscore_burst"
-    window_minutes: 5
-    schedule: "every_30s"
     zscore_threshold: 2.5
+    enabled: true
+    description: "Failed login attempts - brute force detector"
+    burst_threshold: 30
 
   - name: "security.log.privilege"
     type: "security"
@@ -107,30 +123,65 @@ metrics:
     window_minutes: 5
     schedule: "every_30s"
     zscore_threshold: 2.0
+    enabled: true
+    description: "Privilege escalation events"
+    burst_threshold: 20
 
+  - name: "security.log.successes"
+    type: "performance"
+    model: "isolation_forest"
+    window_minutes: 10
+    schedule: "every_1m"
+    contamination: 0.05
+    enabled: true
+    description: "Successful logins - detects unusual patterns"
+
+  # === SYSTEM STABILITY LOGS ===
+  
   - name: "system.log.errors"
     type: "security"
     model: "zscore_burst"
     window_minutes: 5
-    schedule: "every_30s"
+    schedule: "every_1m"
     zscore_threshold: 2.5
+    enabled: true
+    description: "System errors - can indicate compromise"
+    burst_threshold: 50
 
   - name: "app.log.crashes"
     type: "security"
     model: "zscore_burst"
     window_minutes: 5
-    schedule: "every_30s"
+    schedule: "every_1m"
     zscore_threshold: 3.0
+    enabled: true
+    description: "Application crashes - DoS indicator"
+    burst_threshold: 10
 
+# === MODEL CONFIGURATION ===
 models:
   isolation_forest:
     n_estimators: 100
     random_state: 42
     persist_model: true
-    retrain_after: 1000
+    retrain_after: 500
+    contamination_override: null
 
+# === ALERTING CONFIGURATION ===
 alerting:
   write_to_influx: true
   influx_bucket: "metrics"
-  webhook_enabled: false
+  influx_measurement: "anomalies"
   suppression_window_minutes: 5
+  
+  webhook_enabled: false
+  webhook_url: ${ALERT_WEBHOOK_URL}
+  webhook_timeout_seconds: 5
+  
+  # Severity mapping for alerts
+  severity_mapping:
+    isolation_forest: "medium"
+    zscore_burst_threshold_1.5: "low"
+    zscore_burst_threshold_2.0: "medium"
+    zscore_burst_threshold_2.5: "high"
+    zscore_burst_threshold_3.0: "critical"

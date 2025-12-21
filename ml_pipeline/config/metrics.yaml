@@ -11,7 +11,7 @@ metrics:
     enabled: true
     description: "CPU utilization - detects sustained CPU exhaustion attacks"
 
-  - name: "system.cpu.load[all,avg1]"
+  - name: 'perf_counter_en["\System\Context Switches/sec"]'
     type: "performance"
     model: "isolation_forest"
     window_minutes: 10
@@ -20,7 +20,7 @@ metrics:
     enabled: true
     description: "1-minute load average - detects CPU spikes"
 
-  - name: "vm.memory.utilization"
+  - name: "vm.memory.util"
     type: "performance"
     model: "isolation_forest"
     window_minutes: 15
@@ -31,7 +31,7 @@ metrics:
 
   # === PROCESS MONITORING ===
   
-  - name: "proc.num[,,run]"
+  - name: "proc.num[]"
     type: "security"
     model: "zscore_burst"
     window_minutes: 5

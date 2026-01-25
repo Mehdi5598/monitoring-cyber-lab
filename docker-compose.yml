@@ -115,7 +115,7 @@ services:
       INFLUX_BUCKET: ${INFLUX_INIT_BUCKET}
       INFLUX_INIT_ORG: ${INFLUX_INIT_ORG}
      #ML_WINDOW_MINUTES: ${ML_WINDOW_MINUTES}
-      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
     networks:
       - labnet
 #    healthcheck:
